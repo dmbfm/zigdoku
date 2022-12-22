@@ -96,15 +96,19 @@ fn Value(comptime T: type, comptime domain: []const T, comptime index_for_value_
             return self.value[idx];
         }
 
-        pub fn collapse_random(self: *Self, random: std.rand.Random) void {
+        pub fn collapse_random(self: *Self, random: std.rand.Random) u8 {
             var val = random.intRangeLessThan(usize, 0, self.len());
             var i: usize = 0;
-            for (self.value) |*v| {
+            var value: u8 = 0;
+            for (self.value) |*v, k| {
                 if (v.*) {
                     v.* = (i == val);
+                    if (v.*) value = domain[k];
                     i += 1;
                 }
             }
+
+            return value;
         }
 
         pub fn print(self: *Self, w: anytype) !void {
@@ -135,9 +139,20 @@ const input_board =
     \\_________
 ;
 
+const Position = struct {
+    row: usize,
+    col: usize,
+};
+
+const Choice = struct {
+    pos: Position,
+    value: u8,
+};
+
 const Sudoku = struct {
     grid: [9][9]Cell = undefined,
     stack: GridStack = .{},
+    choice_stack: ubu.StaticStack(Choice, 1024) = .{},
     xoshiro: std.rand.Xoshiro256 = undefined,
 
     const Cell = Value(u8, &[_]u8{ 1, 2, 3, 4, 5, 6, 7, 8, 9 }, &index_for_value);
@@ -302,21 +317,21 @@ const Sudoku = struct {
         return true;
     }
 
-    pub fn find_cell_with_lowest_entropy(self: *Sudoku) ?*Cell {
+    pub fn find_cell_with_lowest_entropy(self: *Sudoku) ?Position {
         var n: usize = 1000;
-        var cell: ?*Cell = null;
+        var pos: ?Position = null;
         for (range(9)) |row| {
             for (range(9)) |col| {
                 var current_cell = &self.grid[row][col];
                 var len = current_cell.len();
 
-                if ((cell == null or len < n) and len > 1) {
-                    cell = current_cell;
+                if ((pos == null or len < n) and len > 1) {
+                    pos = .{ .row = row, .col = col };
                     n = len;
                 }
             }
         }
-        return cell;
+        return pos;
     }
 
     pub fn solve(self: *Sudoku) !void {
@@ -324,10 +339,11 @@ const Sudoku = struct {
 
         while (!self.is_complete()) {
             if (count == 0) {
-                if (self.find_cell_with_lowest_entropy()) |cell| {
-                    cell.collapse_random(self.xoshiro.random());
+                if (self.find_cell_with_lowest_entropy()) |pos| {
                     try self.stack.push(self.grid);
-                    count = 1;
+                    var cell = &self.grid[pos.row][pos.col];
+                    var value = cell.collapse_random(self.xoshiro.random());
+                    try self.choice_stack.push(.{ .value = value, .pos = pos });
                 } else {
                     unreachable;
                 }
@@ -335,6 +351,12 @@ const Sudoku = struct {
 
             count = self.propagate() catch blk: {
                 self.grid = self.stack.pop().?;
+                var choice = self.choice_stack.pop().?;
+                var cell = &self.grid[choice.pos.row][choice.pos.col];
+                cell.unset(choice.value);
+                if (cell.len() == 1) {
+                    break :blk 1;
+                }
                 break :blk 0;
             };
         }
