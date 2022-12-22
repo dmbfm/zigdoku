@@ -1,98 +1,8 @@
 const std = @import("std");
+const ubu = @import("ubu");
 const stdout = std.io.getStdOut().writer();
 const stderr = std.io.getStdErr().writer();
-
-fn range(comptime limit: comptime_int) []const usize {
-    comptime {
-        var nums: [limit]usize = undefined;
-        var i: usize = 0;
-        inline while (i < limit) : (i += 1) {
-            nums[i] = i;
-        }
-
-        return &nums;
-    }
-}
-
-fn Stack(comptime T: type, comptime capacity: comptime_int) type {
-    const Error = error{StackFull};
-
-    return struct {
-        items: [capacity]T = undefined,
-        len: usize = 0,
-
-        const Self = @This();
-
-        pub fn push(self: *Self, item: T) Error!void {
-            if (self.len >= capacity) {
-                return error.StackFull;
-            }
-
-            defer self.len += 1;
-            self.items[self.len] = item;
-        }
-
-        pub fn pop(self: *Self) ?T {
-            if (self.len == 0) {
-                return null;
-            }
-
-            defer self.len -= 1;
-            return self.items[self.len - 1];
-        }
-
-        pub fn get_items(self: *Self) []T {
-            return self.items[0..self.len];
-        }
-    };
-}
-
-fn Queue(comptime T: type, comptime capacity: comptime_int) type {
-    const Error = error{QueueFull};
-
-    return struct {
-        items: [capacity]T = undefined,
-        tail: usize = 0,
-        head: usize = 0,
-
-        const Self = @This();
-
-        fn enqueue_head(self: *Self, item: T) Error!void {
-            if (self.head >= capacity) {
-                return error.QueueFull;
-            }
-
-            defer self.head += 1;
-            self.items[self.head] = item;
-        }
-
-        fn enqueue_tail(self: *Self, item: T) Error!void {
-            if (self.tail == 0) {
-                return error.QueueFull;
-            }
-
-            self.tail -= 1;
-            self.items[self.tail] = item;
-        }
-
-        pub fn enqueue(self: *Self, item: T) Error!void {
-            if (self.tail == 0) {
-                return self.enqueue_head(item);
-            } else {
-                return self.enqueue_tail(item);
-            }
-        }
-
-        pub fn dequeue(self: *Self) ?T {
-            if (self.tail == self.head) {
-                return null;
-            }
-
-            defer self.tail += 1;
-            return self.items[self.tail];
-        }
-    };
-}
+const range = ubu.range;
 
 fn Value(comptime T: type, comptime domain: []const T, comptime index_for_value_fn: *const fn (val: T) anyerror!usize) type {
     return struct {
@@ -234,7 +144,7 @@ const Sudoku = struct {
     xoshiro: std.rand.Xoshiro256 = undefined,
 
     const Cell = Value(u8, &[_]u8{ 1, 2, 3, 4, 5, 6, 7, 8, 9 }, &index_for_value);
-    const GridQueue = Queue([9][9]Cell, 1024);
+    const GridQueue = ubu.StaticQueue([9][9]Cell, 1024);
     const LineChars = struct {
         horizontal: []const u8 = "─",
         vertical: []const u8 = "│",
@@ -421,6 +331,7 @@ const Sudoku = struct {
                 if (self.find_cell_with_lowest_entropy()) |cell| {
                     // try self.grid_stack.push(self.grid);
                     try self.grid_queue.enqueue(self.grid);
+                    std.log.info("queue count = {}", .{self.grid_queue.count()});
                     cell.collapse_random(self.xoshiro.random());
                     count = 1;
                 } else {
@@ -565,20 +476,4 @@ pub fn main() !void {
     try s.print_pretty(stdout);
     try s.solve();
     try s.print_pretty(stdout);
-}
-
-const expect = std.testing.expect;
-
-test "Queue" {
-    var q = Queue(u8, 10){};
-    try q.enqueue(1);
-    try q.enqueue(2);
-    try q.enqueue(3);
-    try q.enqueue(4);
-
-    try expect(q.dequeue().? == 1);
-    try expect(q.dequeue().? == 2);
-    try expect(q.dequeue().? == 3);
-    try expect(q.dequeue().? == 4);
-    try expect(q.dequeue() == null);
 }

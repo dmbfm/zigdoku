@@ -14,6 +14,7 @@ pub fn build(b: *std.build.Builder) void {
     const exe = b.addExecutable("zigdoku", "src/main.zig");
     exe.setTarget(target);
     exe.setBuildMode(mode);
+    exe.addPackagePath("ubu", "lib/ubu/src/ubu.zig");
     exe.install();
 
     const run_cmd = exe.run();

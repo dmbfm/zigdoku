@@ -1,0 +1,3 @@
+[submodule "lib/ubu"]
+	path = lib/ubu
+	url = https://github.com/dmbfm/ubu.git
