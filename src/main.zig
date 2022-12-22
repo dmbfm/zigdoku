@@ -83,15 +83,12 @@ fn Value(comptime T: type, comptime domain: []const T, comptime index_for_value_
             self.value[idx] = true;
         }
 
-        pub fn unset(self: *Self, value: T) !bool {
-            var idx = index_for_value_fn(value) catch return false;
+        pub fn unset(self: *Self, value: T) void {
+            var idx = index_for_value_fn(value) catch unreachable;
 
             if (self.value[idx]) {
                 self.value[idx] = false;
-                return true;
             }
-
-            return false;
         }
 
         pub fn has_value(self: *Self, value: T) bool {
@@ -140,11 +137,12 @@ const input_board =
 
 const Sudoku = struct {
     grid: [9][9]Cell = undefined,
-    grid_queue: GridQueue = .{},
+    stack: GridStack = .{},
     xoshiro: std.rand.Xoshiro256 = undefined,
 
     const Cell = Value(u8, &[_]u8{ 1, 2, 3, 4, 5, 6, 7, 8, 9 }, &index_for_value);
-    const GridQueue = ubu.StaticQueue([9][9]Cell, 1024);
+    const GridStack = ubu.StaticStack([9][9]Cell, 1024);
+
     const LineChars = struct {
         horizontal: []const u8 = "─",
         vertical: []const u8 = "│",
@@ -305,8 +303,8 @@ const Sudoku = struct {
     }
 
     pub fn find_cell_with_lowest_entropy(self: *Sudoku) ?*Cell {
-        var cell: ?*Cell = null;
         var n: usize = 1000;
+        var cell: ?*Cell = null;
         for (range(9)) |row| {
             for (range(9)) |col| {
                 var current_cell = &self.grid[row][col];
@@ -325,23 +323,19 @@ const Sudoku = struct {
         var count = self.propagate() catch return error.InvalidInput;
 
         while (!self.is_complete()) {
-            // try self.print_pretty(stdout);
-            // try stdout.print("stack len = {}", .{self.grid_stack.len});
             if (count == 0) {
                 if (self.find_cell_with_lowest_entropy()) |cell| {
-                    // try self.grid_stack.push(self.grid);
-                    try self.grid_queue.enqueue(self.grid);
-                    std.log.info("queue count = {}", .{self.grid_queue.count()});
                     cell.collapse_random(self.xoshiro.random());
+                    try self.stack.push(self.grid);
                     count = 1;
                 } else {
                     unreachable;
                 }
             }
 
-            count = self.propagate() catch {
-                self.grid = self.grid_queue.dequeue().?;
-                continue;
+            count = self.propagate() catch blk: {
+                self.grid = self.stack.pop().?;
+                break :blk 0;
             };
         }
     }
