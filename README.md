@@ -1,6 +1,6 @@
 # zigdoku
 
-A simple sudoku solver I wrote to learn more about [constraitprogrammin](https://en.wikipedia.org/wiki/Constraint_programming). 
+A simple sudoku solver that I wrote to learn more about [constraitprogrammin](https://en.wikipedia.org/wiki/Constraint_programming). 
 Heavily inspired by [this blogpost](https://www.boristhebrave.com/2020/04/13/wave-function-collapse-explained/) from [BorisTheBrave](https://twitter.com/boris_brave).
 
 
