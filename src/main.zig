@@ -228,7 +228,7 @@ const input_board =
     \\_________
 ;
 
-const Sodoku = struct {
+const Sudoku = struct {
     grid: [9][9]Cell = undefined,
     grid_queue: GridQueue = .{},
     xoshiro: std.rand.Xoshiro256 = undefined,
@@ -250,8 +250,8 @@ const Sodoku = struct {
     };
     const line_chars = LineChars{};
 
-    pub fn init_with_board(board: []const u8) !Sodoku {
-        var s = Sodoku{};
+    pub fn init_with_board(board: []const u8) !Sudoku {
+        var s = Sudoku{};
 
         var row: usize = 0;
         var col: usize = 0;
@@ -307,7 +307,7 @@ const Sodoku = struct {
         return num_collapsed;
     }
 
-    pub fn propagate_row(self: *Sodoku, row: usize) !usize {
+    pub fn propagate_row(self: *Sudoku, row: usize) !usize {
         var cells: [9]*Cell = undefined;
 
         for (range(9)) |col| {
@@ -317,7 +317,7 @@ const Sodoku = struct {
         return propagate_cells(&cells);
     }
 
-    pub fn propagate_col(self: *Sodoku, col: usize) !usize {
+    pub fn propagate_col(self: *Sudoku, col: usize) !usize {
         var cells: [9]*Cell = undefined;
 
         for (range(9)) |row| {
@@ -327,7 +327,7 @@ const Sodoku = struct {
         return propagate_cells(&cells);
     }
 
-    pub fn propagate_square(self: *Sodoku, row: usize, col: usize) !usize {
+    pub fn propagate_square(self: *Sudoku, row: usize, col: usize) !usize {
         const inc = [3]usize{ 0, 3, 6 };
         var cells: [9]*Cell = undefined;
 
@@ -342,7 +342,7 @@ const Sodoku = struct {
         return propagate_cells(&cells);
     }
 
-    pub fn propagate_rows(self: *Sodoku) !usize {
+    pub fn propagate_rows(self: *Sudoku) !usize {
         var acc: usize = 0;
         for (range(9)) |row| {
             acc += try self.propagate_row(row);
@@ -351,7 +351,7 @@ const Sodoku = struct {
         return acc;
     }
 
-    pub fn propagate_cols(self: *Sodoku) !usize {
+    pub fn propagate_cols(self: *Sudoku) !usize {
         var acc: usize = 0;
         for (range(9)) |col| {
             acc += try self.propagate_col(col);
@@ -360,7 +360,7 @@ const Sodoku = struct {
         return acc;
     }
 
-    pub fn propagate_squares(self: *Sodoku) !usize {
+    pub fn propagate_squares(self: *Sudoku) !usize {
         var acc: usize = 0;
         for (range(3)) |row| {
             for (range(3)) |col| {
@@ -371,7 +371,7 @@ const Sodoku = struct {
         return acc;
     }
 
-    pub fn propagate(self: *Sodoku) !usize {
+    pub fn propagate(self: *Sudoku) !usize {
         var acc: usize = 0;
 
         acc += try self.propagate_rows();
@@ -381,7 +381,7 @@ const Sodoku = struct {
         return acc;
     }
 
-    pub fn is_complete(self: *Sodoku) bool {
+    pub fn is_complete(self: *Sudoku) bool {
         for (range(9)) |row| {
             for (range(9)) |col| {
                 var cell = &self.grid[row][col];
@@ -394,7 +394,7 @@ const Sodoku = struct {
         return true;
     }
 
-    pub fn find_cell_with_lowest_entropy(self: *Sodoku) ?*Cell {
+    pub fn find_cell_with_lowest_entropy(self: *Sudoku) ?*Cell {
         var cell: ?*Cell = null;
         var n: usize = 1000;
         for (range(9)) |row| {
@@ -411,7 +411,7 @@ const Sodoku = struct {
         return cell;
     }
 
-    pub fn solve(self: *Sodoku) !void {
+    pub fn solve(self: *Sudoku) !void {
         var count = self.propagate() catch return error.InvalidInput;
 
         while (!self.is_complete()) {
@@ -435,7 +435,7 @@ const Sodoku = struct {
         }
     }
 
-    pub fn print(self: *Sodoku, w: anytype) !void {
+    pub fn print(self: *Sudoku, w: anytype) !void {
         var row: usize = 0;
         while (row < 9) : (row += 1) {
             var col: usize = 0;
@@ -453,7 +453,7 @@ const Sodoku = struct {
         try w.print("\n", .{});
     }
 
-    pub fn print_full(self: *Sodoku, w: anytype) !void {
+    pub fn print_full(self: *Sudoku, w: anytype) !void {
         var row: usize = 0;
         while (row < 9) : (row += 1) {
             var col: usize = 0;
@@ -467,7 +467,7 @@ const Sodoku = struct {
         try w.print("\n", .{});
     }
 
-    pub fn print_pretty(self: *Sodoku, w: anytype) !void {
+    pub fn print_pretty(self: *Sudoku, w: anytype) !void {
         try w.print("\n{s}", .{line_chars.top_left});
         for (range(7)) |_| {
             try w.print("{s}", .{line_chars.horizontal});
@@ -561,7 +561,7 @@ pub fn main() !void {
         grid = buf[0..len];
     }
 
-    var s = try Sodoku.init_with_board(grid);
+    var s = try Sudoku.init_with_board(grid);
     try s.print_pretty(stdout);
     try s.solve();
     try s.print_pretty(stdout);
